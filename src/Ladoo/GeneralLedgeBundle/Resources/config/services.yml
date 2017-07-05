@@ -1,0 +1,4 @@
+services:
+#    ladoo_general_ledge.example:
+#        class: Ladoo\GeneralLedgeBundle\Example
+#        arguments: ["@service_id", "plain_value", "%parameter%"]

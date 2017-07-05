@@ -1,3 +1,4 @@
-app:
-    resource: '@AppBundle/Controller/'
-    type: annotation
+ladoo_general_ledge:
+    resource: "@LadooGeneralLedgeBundle/Controller/"
+    type:     annotation
+    prefix:   /
