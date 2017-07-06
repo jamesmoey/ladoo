@@ -1,4 +1,16 @@
 services:
-#    ladoo_general_ledge.example:
-#        class: Ladoo\GeneralLedgeBundle\Example
-#        arguments: ["@service_id", "plain_value", "%parameter%"]
+    ladoo_general_ledge.repository.invoice:
+        class: Ladoo\GeneralLedgeBundle\Repository\InvoiceRepository
+        factory: [ "@doctrine.orm.default_entity_manager", "getRepository" ]
+        arguments:
+            - LadooGeneralLedgeBundle:Invoice
+
+    ladoo_general_ledge.controller.invoice_rest:
+        class: Ladoo\GeneralLedgeBundle\Controller\InvoiceRestController
+        arguments:
+            - "@ladoo_general_ledge.repository.invoice"
+            - "@doctrine.orm.default_entity_manager"
+            - "@jms_serializer.serializer"
+            - "@validator"
+        calls:
+            - { method: setViewHandler, arguments: [ "@fos_rest.view_handler" ] }

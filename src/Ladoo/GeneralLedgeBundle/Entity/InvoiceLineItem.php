@@ -3,6 +3,7 @@
 namespace Ladoo\GeneralLedgeBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation as JMS;
 
 /**
  * InvoiceLineItem
@@ -31,7 +32,8 @@ class InvoiceLineItem
     /**
      * @var string
      *
-     *k @ORM\Column(name="price", type="decimal", precision=2, scale=10)
+     * @JMS\Type("string")
+     * @ORM\Column(name="price", type="decimal", precision=2, scale=10)
      */
     private $price;
 
@@ -57,12 +59,14 @@ class InvoiceLineItem
      */
     public function setInvoice($invoice)
     {
-        $this->invoice = $invoice;
         if ($invoice !== $this->invoice) {
-            $this->invoice->removeLineItem($this);
+            if ($this->invoice !== null) {
+                $this->invoice->removeLineItem($this);
+            }
             if ($invoice !== null) {
                 $invoice->addLineItem($this);
             }
+            $this->invoice = $invoice;
         }
         return $this;
     }
@@ -108,7 +112,7 @@ class InvoiceLineItem
      *
      * @return InvoiceLineItem
      */
-    public function setPrice($price)
+    public function setPrice(string $price)
     {
         $this->price = $price;
 

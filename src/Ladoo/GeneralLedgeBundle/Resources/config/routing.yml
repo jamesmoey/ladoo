@@ -1,0 +1,3 @@
+ladoo_general_ledge_invoice_rest:
+    type:     rest
+    resource: ladoo_general_ledge.controller.invoice_rest

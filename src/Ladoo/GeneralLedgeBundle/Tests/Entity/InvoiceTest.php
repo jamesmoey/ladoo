@@ -11,8 +11,8 @@ class InvoiceTest extends TestCase
     protected $subject;
 
     public function setUp() {
+        parent::setUp();
         $this->subject = new Invoice();
-
     }
 
     public function testCreatedField() {
@@ -44,5 +44,21 @@ class InvoiceTest extends TestCase
         $this->assertEquals(1, count($this->subject->getTransactions()));
         $this->assertEquals(101, $this->subject->getBalance());
         $this->assertEquals('99', $this->subject->getTransactions()[0]->getTotal());
+    }
+
+    public function testCanMultiplePay() {
+        $this->subject
+            ->addLineItem((new InvoiceLineItem())->setPrice('200'));
+        $this->subject->pay(99, 'cash');
+        $this->subject->pay(100, 'cash');
+        $this->assertEquals(2, count($this->subject->getTransactions()));
+        $this->assertEquals(1, $this->subject->getBalance());
+    }
+
+    public function testCanPayMoreThanTotal() {
+        $this->subject
+            ->addLineItem((new InvoiceLineItem())->setPrice('200'));
+        $this->subject->pay(300, 'cash');
+        $this->assertEquals(-100, $this->subject->getBalance());
     }
 }

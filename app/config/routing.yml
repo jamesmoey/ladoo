@@ -1,4 +1,3 @@
-ladoo_general_ledge:
-    resource: "@LadooGeneralLedgeBundle/Controller/"
-    type:     annotation
-    prefix:   /
+_rest_api:
+    resource: '@LadooGeneralLedgeBundle/Resources/config/routing.yml'
+    prefix: /api

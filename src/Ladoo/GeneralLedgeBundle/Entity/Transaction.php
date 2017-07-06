@@ -70,13 +70,13 @@ class Transaction
     public function setInvoice($invoice)
     {
         if ($invoice !== $this->invoice) {
-            $this->invoice = $invoice;
             if ($this->invoice !== null) {
                 $this->invoice->removeTransaction($this);
             }
             if ($invoice !== null) {
                 $invoice->addTransaction($this);
             }
+            $this->invoice = $invoice;
         }
         return $this;
     }
@@ -122,7 +122,7 @@ class Transaction
      *
      * @return Transaction
      */
-    public function setTotal($total)
+    public function setTotal(string $total)
     {
         $this->total = $total;
 

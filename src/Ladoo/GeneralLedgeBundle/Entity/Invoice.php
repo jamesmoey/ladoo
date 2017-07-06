@@ -4,6 +4,8 @@ namespace Ladoo\GeneralLedgeBundle\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation as JMS;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Invoice
@@ -25,6 +27,7 @@ class Invoice
     /**
      * @var string
      *
+     * @Assert\NotBlank()
      * @ORM\Column(name="name", type="string", length=255)
      */
     private $name;
@@ -32,6 +35,8 @@ class Invoice
     /**
      * @var string
      *
+     * @Assert\NotBlank()
+     * @Assert\Email()
      * @ORM\Column(name="email", type="string", length=255)
      */
     private $email;
@@ -46,6 +51,7 @@ class Invoice
     /**
      * @var string
      *
+     * @JMS\ReadOnly()
      * @ORM\Column(name="total", type="decimal", precision=2, scale=10)
      */
     private $total;
@@ -57,10 +63,12 @@ class Invoice
      *
      * @ORM\OneToMany(
      *     targetEntity="Ladoo\GeneralLedgeBundle\Entity\InvoiceLineItem",
-     *     mappedBy="invoice_id",
+     *     mappedBy="invoice",
+     *     fetch="LAZY",
      *     cascade={"persist", "remove"},
      *     orphanRemoval=true
      * )
+     * @JMS\Groups({"details"})
      */
     private $lineItems;
 
@@ -69,11 +77,12 @@ class Invoice
      *
      * @ORM\OneToMany(
      *     targetEntity="Ladoo\GeneralLedgeBundle\Entity\Transaction",
-     *     mappedBy="invoice_id",
+     *     mappedBy="invoice",
      *     fetch="EAGER",
      *     cascade={"persist","remove"},
      *     orphanRemoval=true
      * )
+     * @JMS\Groups({"details"})
      */
     private $transactions;
 
@@ -83,6 +92,19 @@ class Invoice
         $this->transactions = new ArrayCollection();
         $this->total = 0;
         $this->createdAt = new \DateTime();
+    }
+
+    /**
+     * @JMS\PostDeserialize()
+     */
+    public function doUpdateTotal()
+    {
+        $total = '0';
+        $this->lineItems->forAll(function($key, InvoiceLineItem $l) use (&$total) {
+            $total = gmp_add($total, $l->getPrice());
+            return true;
+        });
+        $this->total = gmp_strval($total);
     }
 
     /**
@@ -185,11 +207,13 @@ class Invoice
      * Get the amount still owning on this invoice.
      *
      * @return float
+     * @JMS\VirtualProperty()
      */
     public function getBalance() {
         $paid = '0';
         $this->transactions->forAll(function($key, Transaction $t) use (&$paid) {
             $paid = gmp_add($paid, $t->getTotal());
+            return true;
         });
         return floatval(gmp_strval(gmp_sub($this->total, $paid)));
     }
