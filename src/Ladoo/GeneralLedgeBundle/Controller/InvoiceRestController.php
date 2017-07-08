@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use FOS\RestBundle\Controller\Annotations\RequestParam;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
+
 
 /**
  * Class InvoiceRestController
@@ -57,6 +59,9 @@ class InvoiceRestController extends FOSRestController
         );
     }
 
+    /**
+     * @Security("has_role('ROLE_ADMIN')")
+     */
     public function postAction(Request $req) {
         /** @var Invoice $invoice */
         $invoice = $this->serializer->deserialize($req->getContent(), Invoice::class, 'json');
@@ -66,15 +71,15 @@ class InvoiceRestController extends FOSRestController
         } else {
             $this->em->persist($invoice);
             $this->em->flush();
-            $context = new Context();
-            $context->addGroup('Default')
-                ->addGroup('details');
-            return $this->handleView(
-                $this->view($this->repository->find($invoice->getId()))->setContext($context)->setStatusCode(Response::HTTP_CREATED)
-            );
+            $response = $this->getAction($invoice->getId());
+            $response->setStatusCode(Response::HTTP_CREATED);
+            return $response;
         }
     }
 
+    /**
+     * @Security("has_role('ROLE_ADMIN')")
+     */
     public function deleteAction($id) {
         /** @var Invoice $invoice */
         $invoice = $this->repository->find($id);
@@ -104,12 +109,8 @@ class InvoiceRestController extends FOSRestController
             $invoice->pay($req->request->getDigits('amount'), $req->request->get('method'));
             $this->em->persist($invoice);
             $this->em->flush();
-            $context = new Context();
-            $context->addGroup('Default')
-                ->addGroup('details');
-            return $this->handleView(
-                $this->view($invoice)->setContext($context)
-            );
+            $response = $this->getAction($invoice->getId());
+            return $response;
         }
     }
 }

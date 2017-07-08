@@ -3,7 +3,6 @@
 namespace Ladoo\GeneralLedgeBundle\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Routing\RouteCollection;
 use Symfony\Bundle\FrameworkBundle\Client;
 
 class BaseControllerTestCase extends WebTestCase
@@ -15,17 +14,6 @@ class BaseControllerTestCase extends WebTestCase
     {
         parent::setUp();
         $this->client = static::createClient();
-    }
-
-    protected function setUpRoute() {
-        /** @var RouteCollection $bundleRouteCollection */
-        $bundleRouteCollection = $this->client->getContainer()
-            ->get('routing.loader')
-            ->import('@LadooGeneralLedgeBundle/Resources/config/routing.yml');
-        $bundleRouteCollection->addPrefix('/test');
-        $this->client->getContainer()->get("router")
-            ->getRouteCollection()
-            ->addCollection($bundleRouteCollection);
     }
 
     /**
@@ -40,5 +28,13 @@ class BaseControllerTestCase extends WebTestCase
             ->getMock();
         $this->client->getContainer()->set($serviceName, $repository);
         return $repository;
+    }
+
+    public function buildEntityInstance($class, $id) {
+        $obj = new $class();
+        $idProperty = new \ReflectionProperty($class, 'id');
+        $idProperty->setAccessible(\ReflectionProperty::IS_PUBLIC);
+        $idProperty->setValue($obj, $id);
+        return $obj;
     }
 }

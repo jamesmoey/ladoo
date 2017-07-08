@@ -1,0 +1,11 @@
+security:
+    providers:
+        in_memory:
+            memory:
+                users:
+                    customer:
+                        password:           customer
+                        roles:              ROLE_USER
+                    admin:
+                        password:           admin
+                        roles:              [ROLE_USER, ROLE_ADMIN]

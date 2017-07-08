@@ -7,6 +7,7 @@ use Ladoo\GeneralLedgeBundle\Entity\InvoiceLineItem;
 use Ladoo\GeneralLedgeBundle\Entity\Transaction;
 use Ladoo\GeneralLedgeBundle\Repository\InvoiceRepository;
 use Ladoo\GeneralLedgeBundle\Tests\Controller\BaseControllerTestCase as BaseTestCase;
+use Symfony\Component\HttpFoundation\Response;
 
 class InvoiceRestControllerTest extends BaseTestCase
 {
@@ -28,7 +29,15 @@ class InvoiceRestControllerTest extends BaseTestCase
             ->setMethods(['persist', 'flush', 'remove'])
             ->getMockForAbstractClass();
         $this->client->getContainer()->set('doctrine.orm.default_entity_manager', $this->em);
-        $this->setUpRoute();
+    }
+
+    public function testListAllInvoiceNotAuthenticated() {
+        $this->client->request('GET', '/api/invoices.json');
+        $this->assertEquals(
+            Response::HTTP_UNAUTHORIZED,
+            $this->client->getResponse()->getStatusCode(),
+            $this->client->getResponse()
+        );
     }
 
     public function testListAllInvoice() {
@@ -38,7 +47,7 @@ class InvoiceRestControllerTest extends BaseTestCase
                 (new Invoice())->setName('test')->addLineItem((new InvoiceLineItem())->setPrice('100')),
                 (new Invoice())->setName('test2')->addLineItem((new InvoiceLineItem())->setPrice('200'))
             ]));
-        $this->client->request('GET', '/test/invoices.json');
+        $this->client->request('GET', '/api/invoices.json', [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('customer:customer')]);
         $this->assertEquals(200, $this->client->getResponse()->getStatusCode());
         $content = json_decode($this->client->getResponse()->getContent(), true);
         $this->assertEquals(2, count($content));
@@ -50,6 +59,15 @@ class InvoiceRestControllerTest extends BaseTestCase
         $this->assertEquals(200, $content[1]['balance']);
     }
 
+    public function testListAnInvoiceNotAuthenticated() {
+        $this->client->request('GET', '/api/invoices/1.json');
+        $this->assertEquals(
+            Response::HTTP_UNAUTHORIZED,
+            $this->client->getResponse()->getStatusCode(),
+            $this->client->getResponse()
+        );
+    }
+
     public function testListAnInvoice() {
         $this->repository->expects($this->once())
             ->method('find')
@@ -59,7 +77,7 @@ class InvoiceRestControllerTest extends BaseTestCase
                     ->addLineItem((new InvoiceLineItem())->setPrice('100'))
                     ->pay(50, 'cash')
             ));
-        $this->client->request('GET', '/test/invoices/1.json');
+        $this->client->request('GET', '/api/invoices/1.json', [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('customer:customer')]);
         $this->assertEquals(200, $this->client->getResponse()->getStatusCode());
         $content = json_decode($this->client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('line_items', $content);
@@ -68,12 +86,22 @@ class InvoiceRestControllerTest extends BaseTestCase
         $this->assertEquals(50, $content['balance']);
     }
 
+    public function testPayAnInvoiceNotAuthenticated() {
+        $this->client->request('POST', '/api/invoices/1/pays.json', ['method' => 'cash', 'amount' => 99]);
+        $this->assertEquals(
+            Response::HTTP_UNAUTHORIZED,
+            $this->client->getResponse()->getStatusCode(),
+            $this->client->getResponse()
+        );
+    }
+
     public function testPayAnInvoice() {
-        $this->repository->expects($this->once())
+        $this->repository->expects($this->exactly(2))
             ->method('find')
             ->with($this->equalTo(1))
             ->will($this->returnValue(
-                (new Invoice())->setName('test')
+                $this->buildEntityInstance(Invoice::class, 1)
+                    ->setName('test')
                     ->addLineItem((new InvoiceLineItem())->setPrice('100'))
             ));
         $this->em->expects($this->once())
@@ -84,7 +112,7 @@ class InvoiceRestControllerTest extends BaseTestCase
                 $this->assertEquals('99', $invoice->getTransactions()[0]->getTotal());
                 $this->assertEquals('cash', $invoice->getTransactions()[0]->getPaymentMethod());
             });
-        $this->client->request('POST', '/test/invoices/1/pays.json', ['method' => 'cash', 'amount' => 99]);
+        $this->client->request('POST', '/api/invoices/1/pays.json', ['method' => 'cash', 'amount' => 99], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('customer:customer')]);
         $this->assertEquals(200, $this->client->getResponse()->getStatusCode());
         $content = json_decode($this->client->getResponse()->getContent(), true);
         $this->assertEquals(100, $content['total']);
@@ -94,8 +122,23 @@ class InvoiceRestControllerTest extends BaseTestCase
     }
 
     public function testPayAnInvoiceFailed() {
-        $this->client->request('POST', '/test/invoices/1/pays.json');
+        $this->client->request('POST', '/api/invoices/1/pays.json', [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('customer:customer')]);
         $this->assertEquals(400, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testCreateInvoiceNotAuthorised() {
+        $this->client->request('POST', '/api/invoices.json', [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('customer:customer')], json_encode([
+            'name' => 'test',
+            'email' => 'test@example.com',
+            'line_items' => [
+                [ 'price' => 100 ]
+            ]
+        ]));
+        $this->assertEquals(
+            Response::HTTP_FORBIDDEN,
+            $this->client->getResponse()->getStatusCode(),
+            $this->client->getResponse()
+        );
     }
 
     public function testCreateInvoice() {
@@ -109,8 +152,10 @@ class InvoiceRestControllerTest extends BaseTestCase
             });
         $this->repository->expects($this->once())
             ->method('find')
-            ->will($this->returnValue((new Invoice())->setName('testA')));
-        $this->client->request('POST', '/test/invoices.json', [], [], [], json_encode([
+            ->will($this->returnValue(
+                $this->buildEntityInstance(Invoice::class, 1)->setName('testA')
+            ));
+        $this->client->request('POST', '/api/invoices.json', [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('admin:admin')], json_encode([
             'name' => 'test',
             'email' => 'test@example.com',
             'line_items' => [
@@ -135,8 +180,17 @@ class InvoiceRestControllerTest extends BaseTestCase
                 (new Invoice())->setName('test')
                     ->addLineItem((new InvoiceLineItem())->setPrice('100'))
             ));
-        $this->client->request('DELETE', '/test/invoices/1.json');
+        $this->client->request('DELETE', '/api/invoices/1.json',  [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('admin:admin')]);
         $this->assertEquals(200, $this->client->getResponse()->getStatusCode());
+    }
+
+    public function testRemoveInvoiceNotAuthorised() {
+        $this->client->request('DELETE', '/api/invoices/1.json', [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('customer:customer')]);
+        $this->assertEquals(
+            Response::HTTP_FORBIDDEN,
+            $this->client->getResponse()->getStatusCode(),
+            $this->client->getResponse()
+        );
     }
 
     public function testRemoveInvoiceFail() {
@@ -150,7 +204,7 @@ class InvoiceRestControllerTest extends BaseTestCase
                     ->addLineItem((new InvoiceLineItem())->setPrice('100'))
                     ->addTransaction((new Transaction())->setTotal('100'))
             ));
-        $this->client->request('DELETE', '/test/invoices/1.json');
+        $this->client->request('DELETE', '/api/invoices/1.json', [], [], ['HTTP_AUTHORIZATION' => 'Basic ' . base64_encode('admin:admin')]);
         $this->assertEquals(412, $this->client->getResponse()->getStatusCode());
     }
 }
