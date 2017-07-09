@@ -14,3 +14,16 @@ services:
             - "@validator"
         calls:
             - { method: setViewHandler, arguments: [ "@fos_rest.view_handler" ] }
+
+    ladoo_general_ledge.repository.transaction:
+            class: Ladoo\GeneralLedgeBundle\Repository\TransactionRepository
+            factory: [ "@doctrine.orm.default_entity_manager", "getRepository" ]
+            arguments:
+                - LadooGeneralLedgeBundle:Transaction
+
+        ladoo_general_ledge.controller.invoice_rest:
+            class: Ladoo\GeneralLedgeBundle\Controller\TransactionRestController
+            arguments:
+                - "@ladoo_general_ledge.repository.transaction"
+            calls:
+                - { method: setViewHandler, arguments: [ "@fos_rest.view_handler" ] }
